@@ -98,16 +98,16 @@ app.layout = dbc.Container(
                             "Select distribution",
                                 style={"textAlign": "center"},
                             ),
-                    dbc.DropdownMenu(
-                        label="Select distribution",
-                        menu_variant="dark",
-                        children=[
-                            dbc.DropdownMenuItem("Beta"),
-                            dbc.DropdownMenuItem("Multivariate Normal")
-                            ],
-                        ),
+                    dcc.Dropdown(
+                                id='select-distribution',
+                                options=[
+                                    {'label': 'Beta', 'value': 'beta'},
+                                    {'label': 'Multivariate normal', 'value': 'multivariate_normal'}
+                                ],
+                                value='beta',
+                            ),
                     html.Div(
-                        [var1_mu, var1_sd, var2_mu, var2_sd, corr],
+                        id = 'sliders-or-inputs',
                         className="mt-4 p-4"
                     )
                     ],
@@ -123,6 +123,96 @@ app.layout = dbc.Container(
 )
 
 # Callbacks *******************************************
+
+@app.callback(
+    Output('sliders-or-inputs', 'children'),
+    [Input('select-distribution', 'value')])
+def display_sliders_or_inputs(distribution):
+    if distribution == 'beta':
+        return html.Div([
+            dcc.Slider(
+                id='alpha',
+                min=0,
+                max=10000,
+                value=0,
+                className='four columns'
+            ),
+            dcc.Slider(
+                id='beta',
+                min=0,
+                max=10000,
+                value=0,
+                className='four columns'
+            )
+        ], className='row')
+    elif distribution == 'multivariate_normal':
+        return html.Div([
+            dbc.InputGroup(
+                    [
+                        dbc.InputGroupText("1st variable mean"),
+                        dbc.Input(
+                            id="var1_mu",
+                            placeholder="10",
+                            type="number",
+                            min=10,
+                            value=58.8,
+                        ),
+                    ],
+                    className="mb-3",
+                ),
+            dbc.InputGroup(
+            [
+                dbc.InputGroupText("1st variable standard deviation"),
+                dbc.Input(
+                    id="var1_sd",
+                    placeholder="3",
+                    type="number",
+                    min=0.01,
+                    value=7.82,
+                ),
+            ],
+            className="mb-3",
+            ),
+            dbc.InputGroup(
+                    [
+                        dbc.InputGroupText("2nd variable mean"),
+                        dbc.Input(
+                            id="var2_mu",
+                            placeholder="7",
+                            type="number",
+                            min=10,
+                            value=60.7,
+                        ),
+                    ],
+                    className="mb-3",
+                ),
+            dbc.InputGroup(
+                    [
+                        dbc.InputGroupText("2nd variable standard deviation"),
+                        dbc.Input(
+                            id="var2_sd",
+                            placeholder="10",
+                            type="number",
+                            min=0.01,
+                            value=7.6,
+                        ),
+                    ],
+                    className="mb-3",
+                ),
+            dbc.InputGroup(
+                [
+                    dbc.InputGroupText("Variable correlation"),
+                    dbc.Input(
+                        id="corr",
+                        placeholder="0.12",
+                        type="number",
+                        min=-1,
+                        value=0.7,
+                    ),
+                ],
+                className="mb-3",
+                ),
+        ], className='row')
 
 @app.callback(
     Output("output_graph", "figure"),
