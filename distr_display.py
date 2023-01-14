@@ -8,6 +8,7 @@ from scipy import stats
 # App Layout *******************************************
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.LITERA])
+app.config.suppress_callback_exceptions = True
 
 app.layout = dbc.Container(
     [
@@ -44,8 +45,8 @@ app.layout = dbc.Container(
                     ),
             dbc.Col(
                     [
-                    dcc.Graph(id='beta_graph', figure = {}),
-                    dcc.Graph(id='mv_graph', figure = {}),
+                    html.Div([], id='beta_graph'),
+                    html.Div([], id='mv_graph'),
                     ],
                     width=8
                     ),
@@ -67,15 +68,16 @@ def display_sliders_or_inputs(distribution):
                 min=0,
                 max=100,
                 value=0,
-                className='four columns'
+                className='four columns',
+                tooltip={"placement": "bottom", "always_visible": True}
             ),
             dcc.Slider(
                 id='beta',
                 min=0,
                 max=100,
                 value=0,
-                step=0.5
-                className='four columns'
+                className='four columns',
+                tooltip={"placement": "bottom", "always_visible": True}
             )
         ], className='row')
     elif distribution == 'multivariate_normal':
@@ -148,43 +150,52 @@ def display_sliders_or_inputs(distribution):
         ], className='row')
 
 @app.callback(
-    Output("mv_graph", "figure"),
+    Output("mv_graph", "children"),
+    Input('select-distribution', 'value'),
     Input("var1_mu", "value"),
     Input("var1_sd", "value"),
     Input("var2_mu", "value"),
     Input("var2_sd", "value"),
     Input("corr", "value"),
 )
-def update_mv_normal_distr(var1_mu, var1_sd, var2_mu, var2_sd, corr):
-    x1, x2 = np.mgrid[40:80:0.25, 40:80:0.25]
-    means = np.array([var1_mu, var2_mu])
+def update_mv_normal_distr(distribution, var1_mu, var1_sd, var2_mu, var2_sd, corr):
+    if distribution=='multivariate_normal':
+        x1, x2 = np.mgrid[40:80:0.25, 40:80:0.25]
+        means = np.array([var1_mu, var2_mu])
 
-    cov = var1_sd * var2_sd * corr
-    cov_mat = np.array([[var1_sd**2, cov], [cov, var2_sd**2]])
+        cov = var1_sd * var2_sd * corr
+        cov_mat = np.array([[var1_sd**2, cov], [cov, var2_sd**2]])
 
-    z = stats.multivariate_normal(means, cov_mat).pdf(np.dstack((x1, x2)))
+        z = stats.multivariate_normal(means, cov_mat).pdf(np.dstack((x1, x2)))
 
-    fig = go.Figure(data=[go.Surface(z=z)])
-    fig.update_xaxes(title_text='Testing distribution display')
-    fig.update_yaxes(title_text='Probability Density')
-    fig.update_layout(width=700, height=700, title="Multivariate Normal Distribution",
-                    scene = dict(xaxis = dict(title = 'Var1'),
-                                yaxis = dict(title = 'Var2'),
-                                zaxis = dict(title = 'Probability density')),
-                    margin=dict(l=0, r=50, b=50, t=50))
+        fig = go.Figure(data=[go.Surface(z=z)])
+        fig.update_xaxes(title_text='Testing distribution display')
+        fig.update_yaxes(title_text='Probability Density')
+        fig.update_layout(width=700, height=700, title="Multivariate Normal Distribution",
+                        scene = dict(xaxis = dict(title = 'Var1'),
+                                    yaxis = dict(title = 'Var2'),
+                                    zaxis = dict(title = 'Probability density')),
+                        margin=dict(l=0, r=50, b=50, t=50))
 
-    return fig
+        return dcc.Graph(figure=fig)
+    else:
+        return None
 
 @app.callback(
-    Output("beta_graph", "figure"),
+    Output("beta_graph", "children"),
+    Input('select-distribution', 'value'),
     Input("alpha", "value"),
     Input("beta", "value")
     )
-def update_beta_distr(a, b):
-    x = np.linspace(0, 1, 10000)
-    beta_distr = stats.beta(a,b).pdf(x)
-    fig = px.histogram(beta_distr, title="Beta distribution")
-    return fig
+def update_beta_distr(distribution, a, b):
+    if distribution=='beta':
+        x = np.linspace(0, 1, 10000)
+        beta_distr = stats.beta(a,b).pdf(x)
+        fig = px.histogram(beta_distr, title="Beta distribution")
+
+        return dcc.Graph(figure=fig)
+    else:
+        return None
 
 if __name__ == "__main__":
     app.run_server(debug=True)
