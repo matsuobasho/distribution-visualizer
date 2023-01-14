@@ -5,77 +5,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 from scipy import stats
 
-# ======= InputGroup components
-var1_mu = dbc.InputGroup(
-    [
-        dbc.InputGroupText("1st variable mean"),
-        dbc.Input(
-            id="var1_mu",
-            placeholder="10",
-            type="number",
-            min=10,
-            value=58.8,
-        ),
-    ],
-    className="mb-3",
-)
-
-var1_sd = dbc.InputGroup(
-    [
-        dbc.InputGroupText("1st variable standard deviation"),
-        dbc.Input(
-            id="var1_sd",
-            placeholder="3",
-            type="number",
-            min=0.01,
-            value=7.82,
-        ),
-    ],
-    className="mb-3",
-)
-
-var2_mu = dbc.InputGroup(
-    [
-        dbc.InputGroupText("2nd variable mean"),
-        dbc.Input(
-            id="var2_mu",
-            placeholder="7",
-            type="number",
-            min=10,
-            value=60.7,
-        ),
-    ],
-    className="mb-3",
-)
-
-var2_sd = dbc.InputGroup(
-    [
-        dbc.InputGroupText("2nd variable standard deviation"),
-        dbc.Input(
-            id="var2_sd",
-            placeholder="10",
-            type="number",
-            min=0.01,
-            value=7.6,
-        ),
-    ],
-    className="mb-3",
-)
-
-corr = dbc.InputGroup(
-    [
-        dbc.InputGroupText("Variable correlation"),
-        dbc.Input(
-            id="corr",
-            placeholder="0.12",
-            type="number",
-            min=-1,
-            value=0.7,
-        ),
-    ],
-    className="mb-3",
-)
-
 # App Layout *******************************************
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.LITERA])
@@ -114,7 +43,10 @@ app.layout = dbc.Container(
                     width=4
                     ),
             dbc.Col(
-                    dcc.Graph(id='output_graph', figure = {}),
+                    [
+                    dcc.Graph(id='beta_graph', figure = {}),
+                    dcc.Graph(id='mv_graph', figure = {}),
+                    ],
                     width=8
                     ),
             ]
@@ -133,15 +65,16 @@ def display_sliders_or_inputs(distribution):
             dcc.Slider(
                 id='alpha',
                 min=0,
-                max=10000,
+                max=100,
                 value=0,
                 className='four columns'
             ),
             dcc.Slider(
                 id='beta',
                 min=0,
-                max=10000,
+                max=100,
                 value=0,
+                step=0.5
                 className='four columns'
             )
         ], className='row')
@@ -215,14 +148,14 @@ def display_sliders_or_inputs(distribution):
         ], className='row')
 
 @app.callback(
-    Output("output_graph", "figure"),
+    Output("mv_graph", "figure"),
     Input("var1_mu", "value"),
     Input("var1_sd", "value"),
     Input("var2_mu", "value"),
     Input("var2_sd", "value"),
     Input("corr", "value"),
 )
-def update_graph(var1_mu, var1_sd, var2_mu, var2_sd, corr):
+def update_mv_normal_distr(var1_mu, var1_sd, var2_mu, var2_sd, corr):
     x1, x2 = np.mgrid[40:80:0.25, 40:80:0.25]
     means = np.array([var1_mu, var2_mu])
 
@@ -240,6 +173,17 @@ def update_graph(var1_mu, var1_sd, var2_mu, var2_sd, corr):
                                 zaxis = dict(title = 'Probability density')),
                     margin=dict(l=0, r=50, b=50, t=50))
 
+    return fig
+
+@app.callback(
+    Output("beta_graph", "figure"),
+    Input("alpha", "value"),
+    Input("beta", "value")
+    )
+def update_beta_distr(a, b):
+    x = np.linspace(0, 1, 10000)
+    beta_distr = stats.beta(a,b).pdf(x)
+    fig = px.histogram(beta_distr, title="Beta distribution")
     return fig
 
 if __name__ == "__main__":
