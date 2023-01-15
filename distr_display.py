@@ -22,7 +22,11 @@ input_beta = html.Div(
                             value=0,
                             className='four columns',
                             tooltip={"placement": "bottom", "always_visible": True}
-                        )
+                        ),
+                        html.H4("Distribution parameters"),
+                        html.Div(id="beta_mean"),
+                        html.Div(id="beta_sd"),
+                        html.Div(id="beta_median")
                     ],
                     className='row',
                     id= "input_beta"
@@ -199,6 +203,25 @@ def update_mv_normal_distr(distribution, var1_mu, var1_sd, var2_mu, var2_sd, cor
         return None
 
 @app.callback(
+    Output("beta_mean", "children"),
+    Output("beta_sd", "children"),
+    Output("beta_median", "children"),
+    Input('select-distribution', 'value'),
+    Input("alpha", "value"),
+    Input("beta", "value")
+)
+def get_beta_stats(distribution, a = 5, b = 2):
+    if distribution=='beta':
+        beta_smp = stats.beta(a,b).rvs(100000)
+        mu = f'Mean: {round(np.mean(beta_smp), 3)}'
+        sigma = f'Standard deviation: {round(np.std(beta_smp), 3)}'
+        med = f'Median: {round(np.median(beta_smp), 3)}'
+
+        return mu, sigma, med
+    else:
+        return None
+
+@app.callback(
     Output("beta_graph", "children"),
     Input('select-distribution', 'value'),
     Input("alpha", "value"),
@@ -209,6 +232,7 @@ def update_beta_distr(distribution, a, b):
         x = np.linspace(0, 1, 10000)
         beta_distr = stats.beta(a,b).pdf(x)
         fig = px.line(x = x, y = beta_distr, title="Beta distribution")
+        fig.update_layout(xaxis_title='Value', yaxis_title='Relative probability')
 
         return dcc.Graph(figure=fig)
     else:
