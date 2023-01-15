@@ -5,83 +5,30 @@ import plotly.graph_objects as go
 import plotly.express as px
 from scipy import stats
 
-# App Layout *******************************************
-
-app = Dash(__name__, external_stylesheets=[dbc.themes.LITERA])
-app.config.suppress_callback_exceptions = True
-
-app.layout = dbc.Container(
-    [
-        dbc.Row
-        (
-            dbc.Col(
-                html.H2(
-                    "Visualizing Distributions",
-                    className="text-center bg-primary text-white p-2",
-                        ),
-                    )
-        ),
-        dbc.Row(
-            [
-            dbc.Col(
-                    [html.H3(
-                            "Select distribution",
-                                style={"textAlign": "center"},
-                            ),
-                    dcc.Dropdown(
-                                id='select-distribution',
-                                options=[
-                                    {'label': 'Beta', 'value': 'beta'},
-                                    {'label': 'Multivariate normal', 'value': 'multivariate_normal'}
-                                ],
-                                value='beta',
-                            ),
-                    html.Div(
-                        id = 'sliders-or-inputs',
-                        className="mt-4 p-4"
-                    )
-                    ],
-                    width=4
-                    ),
-            dbc.Col(
+input_beta = html.Div(
                     [
-                    html.Div([], id='beta_graph'),
-                    html.Div([], id='mv_graph'),
+                        dcc.Slider(
+                            id='alpha',
+                            min=0,
+                            max=100,
+                            value=0,
+                            className='four columns',
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        ),
+                        dcc.Slider(
+                            id='beta',
+                            min=0,
+                            max=100,
+                            value=0,
+                            className='four columns',
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
                     ],
-                    width=8
-                    ),
-            ]
-            )
-    ]
-)
+                    className='row',
+                    id= "input_beta"
+                )
 
-# Callbacks *******************************************
-
-@app.callback(
-    Output('sliders-or-inputs', 'children'),
-    [Input('select-distribution', 'value')])
-def display_sliders_or_inputs(distribution):
-    if distribution == 'beta':
-        return html.Div([
-            dcc.Slider(
-                id='alpha',
-                min=0,
-                max=100,
-                value=0,
-                className='four columns',
-                tooltip={"placement": "bottom", "always_visible": True}
-            ),
-            dcc.Slider(
-                id='beta',
-                min=0,
-                max=100,
-                value=0,
-                className='four columns',
-                tooltip={"placement": "bottom", "always_visible": True}
-            )
-        ], className='row')
-    elif distribution == 'multivariate_normal':
-        return html.Div([
+input_mv = html.Div([
             dbc.InputGroup(
                     [
                         dbc.InputGroupText("1st variable mean"),
@@ -147,7 +94,77 @@ def display_sliders_or_inputs(distribution):
                 ],
                 className="mb-3",
                 ),
-        ], className='row')
+        ], className='row',
+        id="input_mv"
+        )
+
+# App Layout *******************************************
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.LITERA])
+app.config.suppress_callback_exceptions = True
+
+app.layout = dbc.Container(
+    [
+        dbc.Row
+        (
+            dbc.Col(
+                html.H2(
+                    "Visualizing Distributions",
+                    className="text-center bg-primary text-white p-2",
+                        ),
+                    )
+        ),
+        dbc.Row(
+            [
+            dbc.Col(
+                    [html.H3(
+                            "Select distribution",
+                                style={"textAlign": "center"},
+                            ),
+                    dcc.Dropdown(
+                                id='select-distribution',
+                                options=[
+                                    {'label': 'Beta', 'value': 'beta'},
+                                    {'label': 'Multivariate normal', 'value': 'multivariate_normal'}
+                                ],
+                                value='beta',
+                            ),
+                    html.Div(
+                        [
+                            input_beta,
+                            input_mv
+                        ],
+                        id = 'sliders-or-inputs',
+                        className="mt-4 p-4"
+                    )
+                    ],
+                    width=4
+                    ),
+            dbc.Col(
+                    [
+                    html.Div([], id='beta_graph'),
+                    html.Div([], id='mv_graph'),
+                    ],
+                    width=8
+                    ),
+            ]
+            )
+    ]
+)
+
+# Callbacks *******************************************
+
+@app.callback(
+    Output('input_beta', 'style'),
+    Output('input_mv', 'style'),
+    Input('select-distribution', 'value'),
+
+)
+def display_sliders_or_inputs(distribution):
+    if distribution == 'beta':
+        return {},{'display': 'none'}
+    elif distribution == 'multivariate_normal':
+        return  {'display': 'none'},{}
 
 @app.callback(
     Output("mv_graph", "children"),
@@ -191,7 +208,7 @@ def update_beta_distr(distribution, a, b):
     if distribution=='beta':
         x = np.linspace(0, 1, 10000)
         beta_distr = stats.beta(a,b).pdf(x)
-        fig = px.histogram(beta_distr, title="Beta distribution")
+        fig = px.line(x = x, y = beta_distr, title="Beta distribution")
 
         return dcc.Graph(figure=fig)
     else:
