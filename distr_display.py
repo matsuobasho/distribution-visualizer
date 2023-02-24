@@ -3,33 +3,110 @@ import dash_bootstrap_components as dbc
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from scipy import stats
+from scipy import stats, special
+
+class bounded_beta(stats.rv_continuous):
+    def _pdf(self, x, alpha, beta):
+        mask = np.greater(x,self.a) & np.less(x,self.b)
+        y = np.zeros_like(x)
+        # this is the formula for pdf of beta distribution
+        # note the confusion about the beta function
+        # it's different from the beta parameter
+        y[mask] = x[mask]**(alpha[mask]-1) * (1-x[mask])**(beta[mask]-1) / special.beta(alpha[mask], beta[mask])
+        return y
 
 input_beta = html.Div(
     [
+        html.Div('Lower bound'),
         dcc.Slider(
-            id="alpha",
+            id="lb",
             min=0,
-            max=100,
+            max=1,
+            value=0.1,
+            step = 0.1,
+            className="four columns",
+            tooltip={"placement": "bottom", "always_visible": True},
+        ),
+        html.Div('Upper bound'),
+        dcc.Slider(
+            id="ub",
+            min=0,
+            max=1,
+            value=0.8,
+            step = 0.1,
+            className="four columns",
+            tooltip={"placement": "bottom", "always_visible": True},
+        ),
+        html.Div('Mode'),
+        dcc.Slider(
+            id="mode",
+            min=0,
+            max=1,
+            value=0.5,
+            step = 0.05,
+            className="four columns",
+            tooltip={"placement": "bottom", "always_visible": True},
+        ),
+        html.Div('Concentration (alpha + beta)'),
+        dcc.Slider(
+            id="conc",
+            min=0,
+            max=400,
+            step=1,
             value=0,
             className="four columns",
             tooltip={"placement": "bottom", "always_visible": True},
         ),
-        dcc.Slider(
-            id="beta",
-            min=0,
-            max=100,
-            value=0,
-            className="four columns",
-            tooltip={"placement": "bottom", "always_visible": True},
-        ),
-        html.H4("Distribution parameters"),
-        html.Div(id="beta_mean"),
-        html.Div(id="beta_sd"),
-        html.Div(id="beta_median"),
+        # html.H4("Distribution parameters"),
+        # html.Div(id="beta_mean"),   # these can't be inputs, since their existence depends on whether beta is chosen or not
+        # html.Div(id="beta_sd"),     # need to reformulate in another way
+        # html.Div(id="beta_median"),
     ],
     className="row",
     id="input_beta",
+)
+
+input_skew = html.Div(
+    [
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Alpha (skew)"),
+                dbc.Input(
+                    id="alpha_skew",
+                    placeholder = 0,
+                    type="number",
+                    value=0
+                ),
+            ],
+            className="mb-3",
+        ),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Mean"),
+                dbc.Input(
+                    id="mean_skew",
+                    placeholder = 0,
+                    type="number",
+                    value=0
+                ),
+            ],
+            className="mb-3",
+        ),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Standard deviation"),
+                dbc.Input(
+                    id="std_skew",
+                    placeholder = 1,
+                    type="number",
+                    value=1
+                ),
+            ],
+            className="mb-3",
+        )
+    ],
+    className="row",
+    id="input_skew",
 )
 
 input_mv = html.Div(
@@ -135,11 +212,12 @@ app.layout = dbc.Container(
                                     "label": "Multivariate normal",
                                     "value": "multivariate_normal",
                                 },
+                                {"label": "Skew normal", "value": "skew_norm"}
                             ],
                             value="beta",
                         ),
                         html.Div(
-                            [input_beta, input_mv],
+                            [input_beta, input_mv, input_skew],
                             id="sliders-or-inputs",
                             className="mt-4 p-4",
                         ),
@@ -150,6 +228,7 @@ app.layout = dbc.Container(
                     [
                         html.Div([], id="beta_graph"),
                         html.Div([], id="mv_graph"),
+                        html.Div([], id="skew_graph")
                     ],
                     width=8,
                 ),
@@ -164,13 +243,16 @@ app.layout = dbc.Container(
 @app.callback(
     Output("input_beta", "style"),
     Output("input_mv", "style"),
+    Output("input_skew", "style"),
     Input("select-distribution", "value"),
 )
 def display_sliders_or_inputs(distribution):
     if distribution == "beta":
-        return {}, {"display": "none"}
+        return {}, {"display": "none"}, {"display": "none"}
     elif distribution == "multivariate_normal":
-        return {"display": "none"}, {}
+        return {"display": "none"}, {}, {"display", "none"}
+    elif distribution =="skew_norm":
+       return {"display": "none"}, {"display": "none"}, {}
 
 
 @app.callback(
@@ -235,15 +317,42 @@ def get_beta_stats(distribution, a=5, b=2):
 @app.callback(
     Output("beta_graph", "children"),
     Input("select-distribution", "value"),
-    Input("alpha", "value"),
-    Input("beta", "value"),
+    Input("lb", "value"),
+    Input("ub", "value"),
+    Input("mode", "value"),
+    Input("conc", "value"),
 )
-def update_beta_distr(distribution, a, b):
+def update_beta_distr(distribution, lb, ub, m, conc):
     if distribution == "beta":
-        x = np.linspace(0, 1, 10000)
-        beta_distr = stats.beta(a, b).pdf(x)
-        fig = px.line(x=x, y=beta_distr, title="Beta distribution")
+
+        bounded_beta_distribution = bounded_beta(a=lb, b=ub, name='bounded_beta',
+                                        shapes='alpha, beta')
+
+        alpha_ = m * (conc - 2) + 1
+        beta_ = (1-m) * (conc - 2) + 1
+
+        x = np.linspace(lb, ub, 10000)
+        y = bounded_beta_distribution.pdf(x, alpha_, beta_)
+        fig = px.line(x=x, y=y, title="Beta distribution")
         fig.update_layout(xaxis_title="Value", yaxis_title="Relative probability")
+
+        return dcc.Graph(figure=fig)
+    else:
+        return None
+
+@app.callback(
+    Output("skew_graph", "children"),
+    Input("select-distribution", "value"),
+    Input("alpha_skew", "value"),
+    Input("mean_skew", "value"),
+    Input("std_skew", "value")
+)
+def update_skewnorm_distr(distribution, a, mu, std_):
+    if distribution=="skew_norm":
+        x = np.linspace(-5, 5, 10000)
+        y = stats.skewnorm.pdf(x, a, mu, std_)
+        fig = px.line(x = x, y = y, title = "Skew Normal Distribution")
+        fig.update_layout(xaxis_title="Value", yaxis_title="Relative Probability")
 
         return dcc.Graph(figure=fig)
     else:
