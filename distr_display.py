@@ -82,7 +82,7 @@ input_skew = html.Div(
         ),
         dbc.InputGroup(
             [
-                dbc.InputGroupText("Mean"),
+                dbc.InputGroupText("Location"),
                 dbc.Input(
                     id="mean_skew",
                     placeholder = 0,
@@ -94,7 +94,7 @@ input_skew = html.Div(
         ),
         dbc.InputGroup(
             [
-                dbc.InputGroupText("Standard deviation"),
+                dbc.InputGroupText("Scale"),
                 dbc.Input(
                     id="std_skew",
                     placeholder = 1,
